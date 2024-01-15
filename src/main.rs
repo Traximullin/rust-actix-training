@@ -10,7 +10,11 @@ use diesel::{
 use std::env;
 use dotenv::dotenv;
 
+pub type DbPool = Pool<ConnectionManager<PgConnection>>;
+
 mod posts;
+mod schema;
+mod models;
 use posts::services;
 
 #[actix_web::main]
@@ -18,7 +22,7 @@ async fn main() -> std::io::Result<()>{
     dotenv().ok();
     let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL");
     let manager = ConnectionManager::<PgConnection>::new(database_url);
-    let pool: Pool<ConnectionManager<PgConnection>> = r2d2::Pool::builder()
+    let pool: DbPool = r2d2::Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
 
