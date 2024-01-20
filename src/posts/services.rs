@@ -1,11 +1,7 @@
 use actix_web::{delete, get, post, put, web, HttpResponse, Error, Responder};
-use diesel::PgConnection;
+use diesel::dsl;
 use crate::DbPool;
-use crate::models::{Post};
-use crate::schema::posts::dsl;
-use diesel::prelude::*;
-
-type DbError = Box<dyn std::error::Error + Send + Sync>;
+use super::controller;
 
 pub fn build(cfg: &mut web::ServiceConfig) {
     cfg
@@ -16,20 +12,11 @@ pub fn build(cfg: &mut web::ServiceConfig) {
         .service(update);
 }
 
-pub fn get_all_published_post(connection: &mut PgConnection) -> Result<Vec<Post>, DbError> {
-  let posts_item = dsl::posts
-      .select(Post::as_select())
-      .load(connection)
-      .expect("Error loading posts");
-
-  Ok(posts_item)
-}
-
 #[get("/posts")]
 async fn get_all(pool: web::Data<DbPool>) -> Result<HttpResponse, Error> {
     let posts = web::block(move || {
         let mut conn = pool.get()?;
-        get_all_published_post(&mut conn)
+        controller::get_all(&mut conn)
     })
     .await?
     .map_err(actix_web::error::ErrorInternalServerError)?;
@@ -38,8 +25,17 @@ async fn get_all(pool: web::Data<DbPool>) -> Result<HttpResponse, Error> {
   }
 
 #[get("/tweets/{id}")]
-async fn get_by_id(_id: web::Path<String>) -> impl Responder {
-  HttpResponse::Ok().body("get_by_id")
+async fn get_by_id(pool: web::Data<DbPool>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+    let post_id: i32 = path.into_inner();
+
+    let post = web::block(move || {
+        let mut conn = pool.get()?;
+        controller::get_one(&mut conn, post_id)
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(post))
 }
 
 #[post("/tweets")]
