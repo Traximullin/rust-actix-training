@@ -1,88 +1,67 @@
-use actix_web::{delete, get, post, put, web, HttpResponse, Error, Responder};
-use diesel::dsl;
-use crate::DbPool;
-use super::controller;
-use crate::models::{NewPostPayload};
+use super::models::{Post, NewPost};
+use crate::schema::posts::{dsl, self};
+use diesel::prelude::*;
+use diesel::PgConnection;
 
-pub fn build(cfg: &mut web::ServiceConfig) {
-    cfg
-        .service(get_all)
-        .service(get_by_id)
-        .service(create)
-        .service(remove)
-        .service(update);
+type DbError = Box<dyn std::error::Error + Send + Sync>;
+
+pub fn get_all(connection: &mut PgConnection) -> Result<Vec<Post>, DbError> {
+    let posts_item = dsl::posts
+        .select(Post::as_select())
+        .load(connection)
+        .expect("Error loading posts");
+  
+    Ok(posts_item)
 }
 
-#[get("/posts")]
-async fn get_all(pool: web::Data<DbPool>) -> Result<HttpResponse, Error> {
-    let posts = web::block(move || {
-        let mut conn = pool.get()?;
-        controller::get_all(&mut conn)
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
+pub fn get_one(connection: &mut PgConnection, post_id: i32) -> Result<Post, DbError> {
+    let post_item = dsl::posts
+        .find(post_id)
+        .select(Post::as_select())
+        .first(connection)?;
 
-    Ok(HttpResponse::Ok().json(posts))
-  }
-
-#[get("/posts/{id}")]
-async fn get_by_id(pool: web::Data<DbPool>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
-    let post_id: i32 = path.into_inner();
-
-    let post = web::block(move || {
-        let mut conn = pool.get()?;
-        controller::get_one(&mut conn, post_id)
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
-
-    Ok(HttpResponse::Ok().json(post))
+    Ok(post_item)
 }
 
-#[post("/posts")]
-async fn create(pool: web::Data<DbPool>, form: web::Json<NewPostPayload>) -> Result<HttpResponse, Error> {
-    let results = web::block(move || {
-        let mut conn = pool.get()?;
+pub fn create(connection: &mut PgConnection, title: &str, body: &str, published: bool) -> Result<Post, DbError> {
+    let new_post = NewPost {
+        title,
+        body,
+        published
+    };
 
-        match form.published {
-            None => controller::create(&mut conn, &form.title, &form.body, false),
-            Some(i) => controller::create(&mut conn, &form.title, &form.body, i),
-        }
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
+    let post = diesel::insert_into(posts::table)
+        .values(&new_post)
+        .get_result(connection)
+        .expect("Error saving new post");
 
-    Ok(HttpResponse::Ok().json(results))
+    Ok(post)
 }
 
-#[delete("/posts/{id}")]
-async fn remove(pool: web::Data<DbPool>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
-    let post_id: i32 = path.into_inner();
+pub fn delete(connection: &mut PgConnection, post_id: i32) -> Result<bool, DbError> {
+    diesel::delete(
+        dsl::posts.filter(
+            dsl::id.eq(post_id)
+        )
+    ).execute(connection)?;
 
-    web::block(move || {
-        let mut conn = pool.get()?;
-        controller::delete(&mut conn, post_id)
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
-    
-    let temp = format!("Delete succeed post with id {}", post_id);
-    Ok(HttpResponse::Ok().body(temp))
+    Ok(true)
 }
 
-#[put("/posts/{id}")]
-async fn update(pool: web::Data<DbPool>, path: web::Path<i32>, form: web::Json<NewPostPayload>) -> Result<HttpResponse, Error> {
-    let post_id: i32 = path.into_inner();
+pub fn update(
+    connection: &mut PgConnection,
+    post_id: i32,
+    title: &str,
+    body: &str,
+    published: bool
+) -> Result<Post, DbError> {
+    let updated_post = diesel::update(dsl::posts.find(post_id))
+    .set((
+        dsl::title.eq(title),
+        dsl::body.eq(body),
+        dsl::published.eq(published),
+    ))
+    .get_result(connection)?;
 
-    let results = web::block(move || {
-        let mut conn = pool.get()?;
-
-        match form.published {
-            None => controller::update(&mut conn, post_id, &form.title, &form.body, false),
-            Some(i) => controller::update(&mut conn, post_id, &form.title, &form.body, i),
-        }
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
-
-    Ok(HttpResponse::Ok().json(results))}
+    Ok(updated_post)
+}
