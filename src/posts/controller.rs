@@ -13,7 +13,7 @@ async fn get_all(pool: web::Data<DbPool>) -> Result<HttpResponse, Error> {
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().json(posts))
-  }
+}
 
 #[get("/posts/{id}")]
 async fn get_by_id(pool: web::Data<DbPool>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
