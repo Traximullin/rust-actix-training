@@ -13,8 +13,10 @@ use dotenv::dotenv;
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
 mod posts;
+mod users;
 mod schema;
 use posts::PostModule;
+use users::UsersModule;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()>{
@@ -29,6 +31,7 @@ async fn main() -> std::io::Result<()>{
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .configure(PostModule::build)
+            .configure(UsersModule::build)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
