@@ -1,5 +1,5 @@
-use super::models::User;
-use crate::schema::users::dsl;
+use super::models::{User, NewUser};
+use crate::schema::users::{dsl, self};
 use diesel::prelude::*;
 use diesel::PgConnection;
 
@@ -19,6 +19,20 @@ pub fn get_one(connection: &mut PgConnection, id: i32) ->  Result<User, DbError>
         .find(id)
         .select(User::as_select())
         .first(connection)?;
+
+    Ok(user)
+}
+
+pub fn create(connection: &mut PgConnection, username: &str, password: &str) -> Result<User, DbError> {
+    let new_user = NewUser {
+        username,
+        password
+    };
+
+    let user = diesel::insert_into(users::table)
+        .values(&new_user)
+        .get_result(connection)
+        .expect("Error saving new user");
 
     Ok(user)
 }
