@@ -36,3 +36,24 @@ pub fn create(connection: &mut PgConnection, username: &str, password: &str) -> 
 
     Ok(user)
 }
+
+pub fn delete(connection: &mut PgConnection, id: i32) -> Result<bool, DbError> {
+    diesel::delete(
+        dsl::users.filter(
+            dsl::id.eq(id)
+        )
+    ).execute(connection)?;
+
+    Ok(true)
+}
+
+pub fn update(connection: &mut PgConnection, id: i32, username: &str, password: &str) -> Result<User, DbError>{
+    let updated_user = diesel::update(dsl::users.find(id))
+        .set((
+            dsl::username.eq(username),
+            dsl::password.eq(password)
+        ))
+        .get_result(connection)?;
+
+    Ok(updated_user)
+}
