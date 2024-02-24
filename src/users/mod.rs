@@ -10,6 +10,8 @@ impl UsersModule {
         cfg
             .service(controller::get_all)
             .service(controller::get_one)
-            .service(controller::create);
+            .service(controller::create)
+            .service(controller::delete)
+            .service(controller::update);
     }
 }

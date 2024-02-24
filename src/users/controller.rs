@@ -43,3 +43,37 @@ async fn create(pool: web::Data<DbPool>, form: web::Json<NewUserPayload>) -> Res
 
     Ok(HttpResponse::Ok().json(results))
 }
+
+#[delete("/users/{id}")]
+async fn delete(pool: web::Data<DbPool>, path: web::Path<i32>) -> Result<HttpResponse, Error> {
+    let id = path.into_inner();
+
+    web::block(move || {
+        let mut conn = pool.get()?;
+        services::delete(&mut conn, id)
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    let temp = format!("Delete succeed user with id {}", id);
+    Ok(HttpResponse::Ok().body(temp))
+}
+
+#[put("/users/{id}")]
+async fn update(
+    pool: web::Data<DbPool>, 
+    path: web::Path<i32>, 
+    form: web::Json<NewUserPayload>
+) -> Result<HttpResponse, Error> {
+    let id: i32 = path.into_inner();
+
+    let result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        services::update(&mut conn, id, &form.username, &form.password)
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(result))
+}
