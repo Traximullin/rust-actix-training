@@ -14,9 +14,11 @@ pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
 mod posts;
 mod users;
+mod auth;
 mod schema;
 use posts::PostModule;
 use users::UsersModule;
+use auth::AuthModule;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()>{
@@ -32,6 +34,7 @@ async fn main() -> std::io::Result<()>{
             .app_data(web::Data::new(pool.clone()))
             .configure(PostModule::build)
             .configure(UsersModule::build)
+            .configure(AuthModule::build)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
