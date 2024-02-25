@@ -1,8 +1,8 @@
 use actix_web::web;
 
-mod services;
+pub mod services;
 mod controller;
-mod models;
+pub mod models;
 pub struct UsersModule;
 
 impl UsersModule {

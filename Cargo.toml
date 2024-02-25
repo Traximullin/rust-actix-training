@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 actix = "0.13.1"
 actix-web = "4.4.1"
+bcrypt = "0.15.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 diesel = { version = "2.1.4", features = ["postgres", "r2d2"] }
 dotenv = "0.15.0"
